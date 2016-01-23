@@ -9,6 +9,7 @@ uniform vec3 lightDir;
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform mat4 model;
 
 uniform mat4 inverseView;
 
@@ -18,7 +19,7 @@ varying vec4 vertex_color;
 
 void main(){
 
-	vec4 positionP = projection * view * vec4(position, 1.0);
+	vec4 positionP = projection * view * model * vec4(position, 1.0);
 	vec4 normalP = inverseView * vec4(normalize(normal), 1.0);
 
 	vertex_light = max(dot(normalP.xyz, lightDir.xyz), 0.0);

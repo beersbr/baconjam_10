@@ -12,6 +12,8 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 	var ColorsShader = null;
 
 	var TrackGeometryBuffer = null;
+	var BoxGeometryBuffer = null;
+	var LineGeometryBuffer = null;
 
 	function CreateQuad(_topleft, _bottomleft, _bottomright, _topright, _color){
 
@@ -62,6 +64,20 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		Array.prototype.push.apply(quad, color);
 
 		return quad;
+	}
+
+
+	function CreateBox(_t_topleft, _t_bottomleft, _t_bottomright, _t_topright, _b_topleft, _b_bottomleft, _b_bottomright, _b_topright, _color){
+
+		var box = [];
+
+		var topQuad = CreateQuad(_t_topleft, _t_bottomleft, _t_bottomright, _t_topright, _color);
+		var bottomQuad = CreateQuad(_b_topleft, _b_bottomleft, _b_bottomright, _b_topright, _color);
+
+		Array.prototype.push.apply(box, topQuad);
+		Array.prototype.push.apply(box, bottomQuad);
+
+		return box;
 	}
 
 
@@ -125,15 +141,12 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		glm.mat4.perspective(ProjectionMatrix, (60).toRadians(), display.getAspectRatio(), 0.1, 100);
 
 		ViewCamera = new Camera();
-		ViewCamera.eye = [0, 3, 7];
+		ViewCamera.eye = [0, 1, -2];
 		ViewCamera.center = [0, 0, 0];
 		ViewCamera.up = [0, 1, 0];
 
 		ViewMatrix = ViewCamera.getViewMatrix();
 
-
-		TrackGeometryBuffer = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, TrackGeometryBuffer);
 
 		//NOTE(brett): Using quads, a quad will be 2 triangles of vertices
 		// vertex: (float is 4 bytes)
@@ -157,8 +170,8 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		GLOBAL_trackChangeTimer = 2;
 		GLOBAL_trackChangeTimerCounter = 0;
 
-		GLOBAL_trackVelocity = [0, 0, -1];
-		GLOBAL_trackAcceleration = 2.0;
+		GLOBAL_trackVelocity = [0, 0, 1];
+		GLOBAL_trackAcceleration = 0.1;
 
 		GLOBAL_trackAngle = 0;
 		GLOBAL_trackTurnAngle = 0;
@@ -166,15 +179,53 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 
 		GLOBAL_trackWidth = 1.6;
 
-		GLOBAL_bottomLeft = [GLOBAL_trackWidth/2.0, 0, 0];
-		GLOBAL_bottomRight = [-GLOBAL_trackWidth/2.0, 0, 0];
+		GLOBAL_bottomLeft = [-GLOBAL_trackWidth/2.0, 0, 0];
+		GLOBAL_bottomRight = [GLOBAL_trackWidth/2.0, 0, 0];
+
+		GLOBAL_carVelocity = [0, 0, 1];
+		GLOBAL_carCenterPosition = [0, 0.1, 0];
+		GLOBAL_carScale = 0.05;
 
 		GLOBAL_currentTrackDistance = 0;
+
+		TrackGeometryBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, TrackGeometryBuffer);
 
 		var trackBufferSize = GLOBAL_quadTypeSize * GLOBAL_maxTrackQuadCount;
 		gl.bufferData(gl.ARRAY_BUFFER,
 		              trackBufferSize,
 		              gl.DYNAMIC_DRAW);
+
+		//NOTE(brett): this is a box. 6 sides with 6 verts each 
+		var boxBufferSize = GLOBAL_quadTypeSize * 36;
+		var carBufferData = CreateBox([GLOBAL_carCenterPosition.x-GLOBAL_carScale, GLOBAL_carCenterPosition.y+GLOBAL_carScale, GLOBAL_carCenterPosition.z+GLOBAL_carScale],
+		                              [GLOBAL_carCenterPosition.x-GLOBAL_carScale, GLOBAL_carCenterPosition.y+GLOBAL_carScale, GLOBAL_carCenterPosition.z-GLOBAL_carScale],
+		                              [GLOBAL_carCenterPosition.x+GLOBAL_carScale, GLOBAL_carCenterPosition.y+GLOBAL_carScale, GLOBAL_carCenterPosition.z-GLOBAL_carScale],
+		                              [GLOBAL_carCenterPosition.x+GLOBAL_carScale, GLOBAL_carCenterPosition.y+GLOBAL_carScale, GLOBAL_carCenterPosition.z+GLOBAL_carScale],
+		                              //NOTE(brett): bottom
+		                              [GLOBAL_carCenterPosition.x-GLOBAL_carScale, GLOBAL_carCenterPosition.y-GLOBAL_carScale, GLOBAL_carCenterPosition.z+GLOBAL_carScale],
+		                              [GLOBAL_carCenterPosition.x-GLOBAL_carScale, GLOBAL_carCenterPosition.y-GLOBAL_carScale, GLOBAL_carCenterPosition.z-GLOBAL_carScale],
+		                              [GLOBAL_carCenterPosition.x+GLOBAL_carScale, GLOBAL_carCenterPosition.y-GLOBAL_carScale, GLOBAL_carCenterPosition.z-GLOBAL_carScale],
+		                              [GLOBAL_carCenterPosition.x+GLOBAL_carScale, GLOBAL_carCenterPosition.y-GLOBAL_carScale, GLOBAL_carCenterPosition.z+GLOBAL_carScale],
+		                              //NOTE(brett): color
+		                              [1.0, 1.0, 1.0, 1.0]);
+
+		BoxGeometryBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, BoxGeometryBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER,
+		              new Float32Array(carBufferData),
+		              gl.DYNAMIC_DRAW);
+
+		// var lineGeometryData = [GLOBAL_carPosition.x, GLOBAL_carPosition.y+1, GLOBAL_carPosition.z,
+		// 						GLOBAL_carPosition.x, GLOBAL_carPosition.y-1, GLOBAL_carPosition.z];
+
+		// LineGeometryBuffer = gl.createBuffer();
+		// gl.bindBuffer(gl.ARRAY_BUFFER, LineGeometryBuffer);
+		// gl.bufferData(gl.ARRAY_BUFFER,
+		//               lineBuffer,
+		//               gl.DYNAMIC_DRAW);
+
+
 
 		run();
 	}
@@ -221,7 +272,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		if(GLOBAL_trackChangeTimerCounter > GLOBAL_trackChangeTimer){
 			//NOTE(brett): degrees per second
 			GLOBAL_trackAngle = -25 + Math.random()*50;
-			GLOBAL_trackChangeTimerCounter = 0.0
+			GLOBAL_trackChangeTimerCounter = 0.0;
 		}
 
 		var currentTrackVelocity = GLOBAL_trackVelocity.scale3(GLOBAL_trackAcceleration * _dt);
@@ -234,7 +285,6 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 			.scale3(currentTrackVelocity.len3());
 
 		var newTrackCenter = GLOBAL_trackCenter.add3(currentTrackVelocity);
-
 		var normalAxis = newTrackCenter.norm3();
 
 		var topLeft = currentTrackVelocity.norm3().rotateY3((-90).toRadians()).scale3(GLOBAL_trackWidth/2);
@@ -288,6 +338,40 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 
 		gl.useProgram(ColorsShader);
 
+		//NOTE(brett): setup uniforms for rendering
+		var projectionUniformLocation = gl.getUniformLocation(ColorsShader, "projection");
+		var viewUniformLocation = gl.getUniformLocation(ColorsShader, "view");
+		var modelUniformLocation = gl.getUniformLocation(ColorsShader, "model");
+		var lightDirUniformLocation = gl.getUniformLocation(ColorsShader, "lightDir");
+		var inverseViewUniformLocation = gl.getUniformLocation(ColorsShader, "inverseView");
+
+		gl.uniformMatrix4fv(projectionUniformLocation,
+		                    false,
+		                    ProjectionMatrix);
+
+		gl.uniformMatrix4fv(viewUniformLocation,
+		                    false,
+		                    ViewMatrix);
+
+		gl.uniformMatrix4fv(modelUniformLocation,
+		                    false,
+		                    glm.mat4.create());
+
+		gl.uniform3fv(lightDirUniformLocation,
+		              ViewCamera.eye.sub3(ViewCamera.center).norm3());
+
+
+		var inverseView = glm.mat4.create();
+		glm.mat4.invert(inverseView, ViewMatrix);
+		glm.mat4.transpose(inverseView, inverseView);
+
+		gl.uniformMatrix4fv(inverseViewUniformLocation,
+		                    false,
+		                    inverseView);
+
+
+		//NOTE(brett): render the track
+
 		gl.bindBuffer(gl.ARRAY_BUFFER,
 		              TrackGeometryBuffer);
 
@@ -331,39 +415,56 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		                       GLOBAL_vertexTypeSize,
 		                       24);
 
-
-		//NOTE(brett): setup uniforms for rendering
-		var projectionUniformLocation = gl.getUniformLocation(ColorsShader, "projection");
-		var viewUniformLocation = gl.getUniformLocation(ColorsShader, "view");
-		var lightDirUniformLocation = gl.getUniformLocation(ColorsShader, "lightDir");
-		var inverseViewUniformLocation = gl.getUniformLocation(ColorsShader, "inverseView");
-
-		gl.uniformMatrix4fv(projectionUniformLocation,
-		                    false,
-		                    ProjectionMatrix);
-
-		gl.uniformMatrix4fv(viewUniformLocation,
-		                    false,
-		                    ViewMatrix);
-
-		gl.uniform3fv(lightDirUniformLocation,
-		              ViewCamera.eye.sub3(ViewCamera.center).norm3());
-
-
-		var inverseView = glm.mat4.create();
-		glm.mat4.invert(inverseView, ViewMatrix);
-		glm.mat4.transpose(inverseView, inverseView);
-
-		gl.uniformMatrix4fv(inverseViewUniformLocation,
-		                    false,
-		                    inverseView);
-
-
 		//NOTE(brett): increase the track size counter
 		GLOBAL_trackQuadCount += 1;
 		var indexDrawCount = Math.min(GLOBAL_trackQuadCount, GLOBAL_maxTrackQuadCount);
 
 		gl.drawArrays(gl.TRIANGLES, 0, indexDrawCount*6);
+
+		//NOTE(brett): render the car box
+		gl.bindBuffer(gl.ARRAY_BUFFER,
+		              BoxGeometryBuffer);
+
+		// gl.bufferSubData(gl.ARRAY_BUFFER,
+		//                  trackBufferIndex,
+		//                  new Float32Array(quad));
+
+		//NOTE(brett): prepare buffer for rendering
+		gl.enableVertexAttribArray(0);
+		gl.enableVertexAttribArray(1);
+		gl.enableVertexAttribArray(2);
+
+		var positionLocation = gl.getAttribLocation(ColorsShader, "position");
+		var normalLocation = gl.getAttribLocation(ColorsShader, "normal");
+		var colorLocation = gl.getAttribLocation(ColorsShader, "color");
+
+
+		//NOTE(brett): Prepare the position 
+		//NOTE(brett): gl.vertexAttribPoint(position, element count, type, normalized?, stride, offset)
+		gl.vertexAttribPointer(positionLocation,
+		                       3, 
+		                       gl.FLOAT,
+		                       false,
+		                       GLOBAL_vertexTypeSize,
+		                       0);
+
+		//NOTE(brett): prepare the normal
+		gl.vertexAttribPointer(normalLocation,
+		                       3,
+		                       gl.FLOAT,
+		                       false,
+		                       GLOBAL_vertexTypeSize,
+		                       12);
+
+		//NOTE(brett): prepare the color
+		gl.vertexAttribPointer(colorLocation,
+		                       4, 
+		                       gl.FLOAT,
+		                       false,
+		                       GLOBAL_vertexTypeSize,
+		                       24);
+		
+		gl.drawArrays(gl.TRIANGLES, 0, 12);
 	}
 
 	load_data(display.getGraphics());
