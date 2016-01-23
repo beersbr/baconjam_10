@@ -125,7 +125,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		glm.mat4.perspective(ProjectionMatrix, (60).toRadians(), display.getAspectRatio(), 0.1, 100);
 
 		ViewCamera = new Camera();
-		ViewCamera.eye = [0, 4, 5];
+		ViewCamera.eye = [0, 3, 7];
 		ViewCamera.center = [0, 0, 0];
 		ViewCamera.up = [0, 1, 0];
 
@@ -145,25 +145,29 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 
 		GLOBAL_vertexTypeSize = 40;
 		GLOBAL_quadTypeSize = 240; 
-		GLOBAL_maxTrackQuadCount = 4096;
+		//NOTE(brett): probably only need about 100, but i'll keep it at a circular 200
+		GLOBAL_maxTrackQuadCount = 40;
 		GLOBAL_trackQuadCount = 0;
+
+		GLOBAL_cameraAngle = 0.0;
+		GLOBAL_cameraTurnSpeed = 2;
+		GLOBAL_cameraMaxTurnSpeed = 25;
 
 		//NOTE(brett): change direction every trackChangeTimer seconds
 		GLOBAL_trackChangeTimer = 2;
 		GLOBAL_trackChangeTimerCounter = 0;
 
 		GLOBAL_trackVelocity = [0, 0, -1];
-		GLOBAL_trackAcceleration = 10.0;
+		GLOBAL_trackAcceleration = 2.0;
 
 		GLOBAL_trackAngle = 0;
 		GLOBAL_trackTurnAngle = 0;
 		GLOBAL_trackCenter = [0.0, 0.0, 0.0];
 
-		GLOBAL_trackWidth = 2.0;
+		GLOBAL_trackWidth = 1.6;
 
-		GLOBAL_bottomLeft = [1, 0, 0];
-		GLOBAL_bottomRight = [-1, 0, 0];
-
+		GLOBAL_bottomLeft = [GLOBAL_trackWidth/2.0, 0, 0];
+		GLOBAL_bottomRight = [-GLOBAL_trackWidth/2.0, 0, 0];
 
 		GLOBAL_currentTrackDistance = 0;
 
@@ -171,8 +175,6 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		gl.bufferData(gl.ARRAY_BUFFER,
 		              trackBufferSize,
 		              gl.DYNAMIC_DRAW);
-
-
 
 		run();
 	}
@@ -224,10 +226,8 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 
 		var currentTrackVelocity = GLOBAL_trackVelocity.scale3(GLOBAL_trackAcceleration * _dt);
 
-		var frameAngle = GLOBAL_trackAngle * _dt;
-		// GLOBAL_trackTurnAngle += frameAngle;
-		GLOBAL_trackTurnAngle = frameAngle;
-
+		// var frameAngle = GLOBAL_trackAngle * _dt;
+		GLOBAL_trackTurnAngle = GLOBAL_trackAngle * _dt;
 
 		currentTrackVelocity = currentTrackVelocity.norm3()
 			.rotateY3(GLOBAL_trackTurnAngle.toRadians())
@@ -259,24 +259,42 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 
 		//NOTE(brett): move camera with the track
 		var cameraLookat = ViewCamera.eye.sub3(ViewCamera.center);
+
+		//TODO(brett): move the camera with respect to the mouse position on the screen
+		//TODO(brett): Need to start the mouse off in the center of the canvas
 		
+		var width = display.getWidth();
+		var height = display.getHeight();
+
+		var mousePosition = mouse.getMousePosition();
+		var rx = mousePosition.x / width;
+		var ry = mousePosition.y / height;
+
+		//NOTE(brett): map the mouse position to -1<->1
+		var mouseOffset = [-1 + rx*2, -1 + ry*2];
+
 		ViewCamera.center.z = GLOBAL_trackCenter.z;
 		ViewCamera.center.x = GLOBAL_trackCenter.x;
+
+		var turnDelta = GLOBAL_cameraAngle + (_dt * (mouseOffset.x * GLOBAL_cameraTurnSpeed));
+		GLOBAL_cameraAngle = turnDelta;
+
+		GLOBAL_cameraAngle = Math.min(GLOBAL_cameraAngle, GLOBAL_cameraMaxTurnSpeed);
+
+		cameraLookat = cameraLookat.rotateY3((GLOBAL_cameraAngle).toRadians());
+
 		ViewCamera.eye = ViewCamera.center.add3(cameraLookat);
-
-
 		ViewMatrix = ViewCamera.getViewMatrix();
-
 
 		gl.useProgram(ColorsShader);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER,
 		              TrackGeometryBuffer);
 
+		var trackBufferIndex = (GLOBAL_trackQuadCount % GLOBAL_maxTrackQuadCount) * GLOBAL_quadTypeSize;
 		gl.bufferSubData(gl.ARRAY_BUFFER,
-		                 GLOBAL_trackQuadCount * GLOBAL_quadTypeSize,
+		                 trackBufferIndex,
 		                 new Float32Array(quad));
-
 
 		//NOTE(brett): prepare buffer for rendering
 		gl.enableVertexAttribArray(0);
@@ -343,10 +361,9 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 
 		//NOTE(brett): increase the track size counter
 		GLOBAL_trackQuadCount += 1;
+		var indexDrawCount = Math.min(GLOBAL_trackQuadCount, GLOBAL_maxTrackQuadCount);
 
-		gl.drawArrays(gl.TRIANGLES, 0, GLOBAL_trackQuadCount*6 )
-
-		
+		gl.drawArrays(gl.TRIANGLES, 0, indexDrawCount*6);
 	}
 
 	load_data(display.getGraphics());
