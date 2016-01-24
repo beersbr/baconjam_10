@@ -13,6 +13,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 	var TrackGeometryBuffer = null;
 	var BoxGeometryBuffer = null;
+	var TreeGeometryBuffer = null;
 	var LineGeometryBuffer = null;
 
 	function CreateQuad(_topleft, _bottomleft, _bottomright, _topright, _color){
@@ -68,6 +69,28 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 
 	function CreateBox(_t_topleft, _t_bottomleft, _t_bottomright, _t_topright, _b_topleft, _b_bottomleft, _b_bottomright, _b_topright, _color){
+
+		var box = [];
+
+		var topQuad = CreateQuad(_t_topleft, _t_bottomleft, _t_bottomright, _t_topright, _color);
+		var bottomQuad = CreateQuad(_b_topleft, _b_bottomleft, _b_bottomright, _b_topright, _color);
+		var frontQuad = CreateQuad(_t_topright, _b_topright, _b_topleft, _t_topleft, _color);
+		var backQuad = CreateQuad(_t_bottomleft, _b_bottomleft, _b_bottomright, _t_bottomright, _color);
+		var leftQuad = CreateQuad(_t_topleft, _b_topleft, _b_bottomleft, _t_bottomleft, _color);
+		var rightQuad = CreateQuad(_t_bottomright, _b_bottomright, _b_topright, _t_topright, _color);
+
+		Array.prototype.push.apply(box, topQuad);
+		Array.prototype.push.apply(box, bottomQuad);
+		Array.prototype.push.apply(box, frontQuad);
+		Array.prototype.push.apply(box, backQuad);
+		Array.prototype.push.apply(box, leftQuad);
+		Array.prototype.push.apply(box, rightQuad);
+
+		return box;
+	}
+
+
+	function CreateTree(_t_topleft, _t_bottomleft, _t_bottomright, _t_topright, _b_topleft, _b_bottomleft, _b_bottomright, _b_topright, _color){
 
 		var box = [];
 
@@ -198,6 +221,12 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 		GLOBAL_currentTrackDistance = 0;
 
+		GLOBAL_treeArray = [];
+		GLOBAL_treeChance = 75;
+		GLOBAL_lastTreeFrame = 0;
+		GLOBAL_minTreeSpacing = 100;
+
+
 		TrackGeometryBuffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, TrackGeometryBuffer);
 
@@ -224,6 +253,28 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		gl.bindBuffer(gl.ARRAY_BUFFER, BoxGeometryBuffer);
 		gl.bufferData(gl.ARRAY_BUFFER,
 		              new Float32Array(carBufferData),
+		              gl.DYNAMIC_DRAW);
+
+
+
+		//NOTE(keith): for now this is just a copy of the box; getting it passing by, then will change it to a tree
+		var treeBufferSize = GLOBAL_quadTypeSize * 36;
+		var treeBufferData = CreateTree([-GLOBAL_carHalfScale, +GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+		                              [-GLOBAL_carHalfScale, +GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+		                              [+GLOBAL_carHalfScale, +GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+		                              [+GLOBAL_carHalfScale, +GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+		                              //NOTE(brett): bottom
+		                              [-GLOBAL_carHalfScale, -GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+		                              [-GLOBAL_carHalfScale, -GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+		                              [+GLOBAL_carHalfScale, -GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+		                              [+GLOBAL_carHalfScale, -GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+		                              //NOTE(brett): color
+		                              [1.0, 1.0, 1.0, 0.0]);
+
+		TreeGeometryBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, TreeGeometryBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER,
+		              new Float32Array(treeBufferData),
 		              gl.DYNAMIC_DRAW);
 
 		run();
@@ -494,6 +545,73 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		                       24);
 		
 		gl.drawArrays(gl.TRIANGLES, 0, 36);
+
+		GLOBAL_lastTreeFrame++;
+
+		// Randomly place a tree, if its been sufficent time since the last
+		if(Math.floor(Math.random() * 100) > GLOBAL_treeChance && GLOBAL_lastTreeFrame >= GLOBAL_minTreeSpacing) {
+			// Place on random side of road
+			var parity = Math.floor(Math.random() * 2) == 1 ? 1 : -1;
+
+			// NOTE(keith): this needs to be based off of something else (tring to get to offset from the road boundry)
+			GLOBAL_treeArray.push(GLOBAL_trackCenter.add3([1 * parity,0,0]));
+
+			// Reset the last time a tree was placed
+			GLOBAL_lastTreeFrame = 0;
+		}
+
+		//NOTE(keith): render trees
+		for(tree in GLOBAL_treeArray) {
+			gl.bindBuffer(gl.ARRAY_BUFFER,
+			              TreeGeometryBuffer);
+			var modelMatrix = glm.mat4.create();
+			glm.mat4.translate(modelMatrix, modelMatrix, GLOBAL_treeArray[tree]);
+			glm.mat4.rotateY(modelMatrix, modelMatrix, GLOBAL_carAngle.toRadians());
+
+			gl.uniformMatrix4fv(modelUniformLocation,
+			                    false,
+			                    modelMatrix);
+
+			// gl.bufferSubData(gl.ARRAY_BUFFER,
+			//                  trackBufferIndex,
+			//                  new Float32Array(quad));
+
+			//NOTE(brett): prepare buffer for rendering
+			gl.enableVertexAttribArray(0);
+			gl.enableVertexAttribArray(1);
+			gl.enableVertexAttribArray(2);
+
+			var positionLocation = gl.getAttribLocation(ColorsShader, "position");
+			var normalLocation = gl.getAttribLocation(ColorsShader, "normal");
+			var colorLocation = gl.getAttribLocation(ColorsShader, "color");
+
+			//NOTE(brett): Prepare the position 
+			//NOTE(brett): gl.vertexAttribPoint(position, element count, type, normalized?, stride, offset)
+			gl.vertexAttribPointer(positionLocation,
+			                       3, 
+			                       gl.FLOAT,
+			                       false,
+			                       GLOBAL_vertexTypeSize,
+			                       0);
+
+			//NOTE(brett): prepare the normal
+			gl.vertexAttribPointer(normalLocation,
+			                       3,
+			                       gl.FLOAT,
+			                       false,
+			                       GLOBAL_vertexTypeSize,
+			                       12);
+
+			//NOTE(brett): prepare the color
+			gl.vertexAttribPointer(colorLocation,
+			                       4, 
+			                       gl.FLOAT,
+			                       false,
+			                       GLOBAL_vertexTypeSize,
+			                       24);
+			
+			gl.drawArrays(gl.TRIANGLES, 0, 36);
+		}
 	}
 
 	load_data(display.getGraphics());
