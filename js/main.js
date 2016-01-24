@@ -3,7 +3,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 	var display = new Display("Bacon Jam 10", 1200, 800);
 	var mouse = new Mouse(display);
-	// var keyboard = new Keyboard();
+	var keyboard = new Keyboard();
 
 	var ProjectionMatrix = null;
 	var ViewMatrix = null;
@@ -149,7 +149,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		glm.mat4.perspective(ProjectionMatrix, (60).toRadians(), display.getAspectRatio(), 0.1, 100);
 
 		ViewCamera = new Camera();
-		ViewCamera.eye = [0, 1, -2];
+		ViewCamera.eye = [0, 1.25, -1.5];
 		ViewCamera.center = [0, 0, 0];
 		ViewCamera.up = [0, 1, 0];
 
@@ -185,15 +185,15 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		GLOBAL_trackTurnAngle = 0;
 		GLOBAL_trackCenter = [0.0, 0.0, 0.0];
 
-		GLOBAL_trackWidth = 1.5;
+		GLOBAL_trackWidth = 1.0;
 
 		GLOBAL_bottomLeft = [-GLOBAL_trackWidth/2.0, 0, 0];
 		GLOBAL_bottomRight = [GLOBAL_trackWidth/2.0, 0, 0];
 
 		GLOBAL_carVelocity = [0, 0, 1.0];
 		GLOBAL_carAcceleration = 0.5;
-		GLOBAL_carCenterPosition = [0, 0.1, -0.1];
-		GLOBAL_carScale = 0.2/2;
+		GLOBAL_carCenterPosition = [0, 1/8, -0.4];
+		GLOBAL_carScale = 1/8;
 
 		GLOBAL_currentTrackDistance = 0;
 
@@ -207,15 +207,15 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 		//NOTE(brett): this is a box. 6 sides with 6 verts each 
 		var boxBufferSize = GLOBAL_quadTypeSize * 36;
-		var carBufferData = CreateBox([GLOBAL_carCenterPosition.x-GLOBAL_carScale, GLOBAL_carCenterPosition.y+GLOBAL_carScale, GLOBAL_carCenterPosition.z+GLOBAL_carScale],
-		                              [GLOBAL_carCenterPosition.x-GLOBAL_carScale, GLOBAL_carCenterPosition.y+GLOBAL_carScale, GLOBAL_carCenterPosition.z-GLOBAL_carScale],
-		                              [GLOBAL_carCenterPosition.x+GLOBAL_carScale, GLOBAL_carCenterPosition.y+GLOBAL_carScale, GLOBAL_carCenterPosition.z-GLOBAL_carScale],
-		                              [GLOBAL_carCenterPosition.x+GLOBAL_carScale, GLOBAL_carCenterPosition.y+GLOBAL_carScale, GLOBAL_carCenterPosition.z+GLOBAL_carScale],
+		var carBufferData = CreateBox([-GLOBAL_carScale, +GLOBAL_carScale, +GLOBAL_carScale],
+		                              [-GLOBAL_carScale, +GLOBAL_carScale, -GLOBAL_carScale],
+		                              [+GLOBAL_carScale, +GLOBAL_carScale, -GLOBAL_carScale],
+		                              [+GLOBAL_carScale, +GLOBAL_carScale, +GLOBAL_carScale],
 		                              //NOTE(brett): bottom
-		                              [GLOBAL_carCenterPosition.x-GLOBAL_carScale, GLOBAL_carCenterPosition.y-GLOBAL_carScale, GLOBAL_carCenterPosition.z+GLOBAL_carScale],
-		                              [GLOBAL_carCenterPosition.x-GLOBAL_carScale, GLOBAL_carCenterPosition.y-GLOBAL_carScale, GLOBAL_carCenterPosition.z-GLOBAL_carScale],
-		                              [GLOBAL_carCenterPosition.x+GLOBAL_carScale, GLOBAL_carCenterPosition.y-GLOBAL_carScale, GLOBAL_carCenterPosition.z-GLOBAL_carScale],
-		                              [GLOBAL_carCenterPosition.x+GLOBAL_carScale, GLOBAL_carCenterPosition.y-GLOBAL_carScale, GLOBAL_carCenterPosition.z+GLOBAL_carScale],
+		                              [-GLOBAL_carScale, -GLOBAL_carScale, +GLOBAL_carScale],
+		                              [-GLOBAL_carScale, -GLOBAL_carScale, -GLOBAL_carScale],
+		                              [+GLOBAL_carScale, -GLOBAL_carScale, -GLOBAL_carScale],
+		                              [+GLOBAL_carScale, -GLOBAL_carScale, +GLOBAL_carScale],
 		                              //NOTE(brett): color
 		                              [1.0, 1.0, 1.0, 1.0]);
 
@@ -328,13 +328,21 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		// 	GLOBAL_cameraAngle = turnDelta;	
 		// }
 
+		var keyTurnAngle = 10;
+		if(keyboard.left()){
+			turnDelta = GLOBAL_cameraAngle + (_dt * keyTurnAngle);
+			GLOBAL_cameraAngle = turnDelta;
+		}
+
+		if(keyboard.right()){
+			turnDelta = GLOBAL_cameraAngle - (_dt * keyTurnAngle);
+			GLOBAL_cameraAngle = turnDelta;
+		}
+
 		GLOBAL_cameraAngle = Math.min(GLOBAL_cameraAngle, GLOBAL_cameraMaxTurnSpeed);
 		cameraLookat = cameraLookat.rotateY3((GLOBAL_cameraAngle).toRadians());
 
-		//NOTE(brett): move the player (the car)
-		// var currentTrackVelocity = GLOBAL_trackVelocity.scale3(GLOBAL_trackAcceleration * _dt);
-
-		
+		//NOTE(brett): Move the player car	
 		var currentCarVelocity = GLOBAL_carVelocity.scale3(GLOBAL_carAcceleration * _dt);
 		GLOBAL_carCenterPosition = GLOBAL_carCenterPosition.add3(currentCarVelocity);
 
@@ -430,6 +438,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		              BoxGeometryBuffer);
 
 		var modelMatrix = glm.mat4.create()
+		glm.mat4.rotateY(modelMatrix, modelMatrix, GLOBAL_cameraAngle.toRadians());
 		glm.mat4.translate(modelMatrix, modelMatrix, GLOBAL_carCenterPosition);
 
 		gl.uniformMatrix4fv(modelUniformLocation,
