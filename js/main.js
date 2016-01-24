@@ -178,6 +178,17 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 		ViewMatrix = ViewCamera.getViewMatrix();
 
+		GLOBAL_timer = 0;
+
+		GLOBAL_colorChangeInterval = 0.2// in seconds (~200 ms)
+		GLOBAL_colorChangeTimer = 0;
+		GLOBAL_colorIndex = 0;
+		GLOBAL_colorArray = [
+			[1.0, 0.2, 0.5, 1.0], // red
+			[0.5, 1.0, 0.2, 1.0], // green
+			[0.5, 0.2, 1.0, 1.0], // purple
+			[0.2, 0.5, 1.0, 1.0], // blue
+		];
 
 		//NOTE(brett): Using quads, a quad will be 2 triangles of vertices
 		// vertex: (float is 4 bytes)
@@ -226,6 +237,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		GLOBAL_lastTreeFrame = 0;
 		GLOBAL_minTreeSpacing = 100;
 
+		GLOBAL_trackBufferTriangles = [];
 
 		TrackGeometryBuffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, TrackGeometryBuffer);
@@ -254,7 +266,6 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		gl.bufferData(gl.ARRAY_BUFFER,
 		              new Float32Array(carBufferData),
 		              gl.DYNAMIC_DRAW);
-
 
 
 		//NOTE(keith): for now this is just a copy of the box; getting it passing by, then will change it to a tree
@@ -331,8 +342,21 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 	function updateAndRender(_context, _dt){
 		var gl = _context;
 
-		gl.clearColor(0.0, 0.5, 1.0, 1.0);
-		gl.clear(gl.COLOR_BUFFER_BIT);
+		GLOBAL_timer += _dt;
+
+		GLOBAL_colorChangeTimer += _dt;
+		if(GLOBAL_colorChangeTimer > GLOBAL_colorChangeInterval){
+			if(keyboard.action1()){
+				GLOBAL_colorIndex = (GLOBAL_colorIndex + 1)  % GLOBAL_colorArray.length;
+				GLOBAL_colorChangeTimer = 0;
+			}
+			else if(keyboard.action2()){
+				GLOBAL_colorIndex = ((GLOBAL_colorIndex + GLOBAL_colorArray.length) - 1)  % GLOBAL_colorArray.length;
+				GLOBAL_colorChangeTimer = 0;
+			}
+		}
+
+		// GLOBAL_trackWidth -= 0.01 * _dt;
 
 		//NOTE(brett): change track direction -25 - 25
 		GLOBAL_trackChangeTimerCounter += _dt;
@@ -391,12 +415,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		ViewCamera.center.z = GLOBAL_carCenterPosition.z;
 		ViewCamera.center.x = GLOBAL_carCenterPosition.x;
 
-		// NOTE(brett): 30% in the center of the screen is used for NOT turning
-		// if(Math.abs(mouseOffset.x) > 0.15){
-		// 	var turnDelta = GLOBAL_cameraAngle + (_dt * (-mouseOffset.x * GLOBAL_cameraTurnSpeed));
-		// 	GLOBAL_cameraAngle = turnDelta;	
-		// }
-
+		//NOTE(brett): this (input code) should probably be done BEFORE the rest of the code
 		var keyTurnAngle = 5;
 		if(keyboard.left()){
 			turnDelta = GLOBAL_cameraAngle + (_dt * keyTurnAngle);
@@ -426,6 +445,10 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		ViewCamera.eye = ViewCamera.center.add3(cameraLookat);
 		ViewMatrix = ViewCamera.getViewMatrix();
 
+
+		gl.clearColor(0.0, 0.5, 1.0, 1.0);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
 		gl.useProgram(ColorsShader);
 
 		//NOTE(brett): setup uniforms for rendering
@@ -434,6 +457,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		var modelUniformLocation = gl.getUniformLocation(ColorsShader, "model");
 		var lightDirUniformLocation = gl.getUniformLocation(ColorsShader, "lightDir");
 		var inverseViewUniformLocation = gl.getUniformLocation(ColorsShader, "inverseView");
+		var multColorUniformLocation = gl.getUniformLocation(ColorsShader, "multColor");
 
 		gl.uniformMatrix4fv(projectionUniformLocation,
 		                    false,
@@ -458,6 +482,8 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		gl.uniformMatrix4fv(inverseViewUniformLocation,
 		                    false,
 		                    inverseView);
+
+		gl.uniform4fv(multColorUniformLocation, [1.0, 1.0, 1.0, 1.0]); 
 
 		//NOTE(brett): render the track
 		gl.bindBuffer(gl.ARRAY_BUFFER,
@@ -523,9 +549,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		                    false,
 		                    modelMatrix);
 
-		// gl.bufferSubData(gl.ARRAY_BUFFER,
-		//                  trackBufferIndex,
-		//                  new Float32Array(quad));
+		gl.uniform4fv(multColorUniformLocation, GLOBAL_colorArray[GLOBAL_colorIndex]);
 
 		//NOTE(brett): prepare buffer for rendering
 		gl.enableVertexAttribArray(0);
@@ -577,6 +601,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 			GLOBAL_lastTreeFrame = 0;
 		}
 
+		gl.uniform4fv(multColorUniformLocation, [1.0, 1.0, 1.0, 1.0]);
 		//NOTE(keith): render trees
 		for(tree in GLOBAL_treeArray) {
 			gl.bindBuffer(gl.ARRAY_BUFFER,
