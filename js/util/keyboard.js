@@ -12,7 +12,10 @@ define([], function(){
 				left: 65,
 				down: 83,
 				right: 68,
-				action: 13
+				action0: 13,
+				action1: 74,
+				action2: 75,
+				action3: 76,
 			};
 
 			keyboard = this;
@@ -22,9 +25,22 @@ define([], function(){
 		return keyboard;
 	};
 
-	Keyboard.prototype.action = function(){
-		return this.keys[this.mapping.action];
+	Keyboard.prototype.action0 = function(){
+		return this.keys[this.mapping.action0];
 	};
+
+	Keyboard.prototype.action1 = function(){
+		return this.keys[this.mapping.action1];
+	};
+
+	Keyboard.prototype.action2 = function(){
+		return this.keys[this.mapping.action2];
+	};
+
+	Keyboard.prototype.action3 = function(){
+		return this.keys[this.mapping.action3];
+	};
+
 
 	Keyboard.prototype.down = function(){
 		return this.keys[this.mapping.down];
