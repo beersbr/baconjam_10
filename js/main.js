@@ -193,7 +193,8 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		GLOBAL_carVelocity = [0, 0, 1.0];
 		GLOBAL_carAcceleration = 0.5;
 		GLOBAL_carCenterPosition = [0, 1/8, -0.4];
-		GLOBAL_carScale = 1/8;
+		GLOBAL_carHalfScale = 1/8;
+		GLOBAL_carAngle = 0.0;
 
 		GLOBAL_currentTrackDistance = 0;
 
@@ -207,15 +208,15 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 		//NOTE(brett): this is a box. 6 sides with 6 verts each 
 		var boxBufferSize = GLOBAL_quadTypeSize * 36;
-		var carBufferData = CreateBox([-GLOBAL_carScale, +GLOBAL_carScale, +GLOBAL_carScale],
-		                              [-GLOBAL_carScale, +GLOBAL_carScale, -GLOBAL_carScale],
-		                              [+GLOBAL_carScale, +GLOBAL_carScale, -GLOBAL_carScale],
-		                              [+GLOBAL_carScale, +GLOBAL_carScale, +GLOBAL_carScale],
+		var carBufferData = CreateBox([-GLOBAL_carHalfScale, +GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+		                              [-GLOBAL_carHalfScale, +GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+		                              [+GLOBAL_carHalfScale, +GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+		                              [+GLOBAL_carHalfScale, +GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
 		                              //NOTE(brett): bottom
-		                              [-GLOBAL_carScale, -GLOBAL_carScale, +GLOBAL_carScale],
-		                              [-GLOBAL_carScale, -GLOBAL_carScale, -GLOBAL_carScale],
-		                              [+GLOBAL_carScale, -GLOBAL_carScale, -GLOBAL_carScale],
-		                              [+GLOBAL_carScale, -GLOBAL_carScale, +GLOBAL_carScale],
+		                              [-GLOBAL_carHalfScale, -GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+		                              [-GLOBAL_carHalfScale, -GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+		                              [+GLOBAL_carHalfScale, -GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+		                              [+GLOBAL_carHalfScale, -GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
 		                              //NOTE(brett): color
 		                              [1.0, 1.0, 1.0, 1.0]);
 
@@ -328,7 +329,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		// 	GLOBAL_cameraAngle = turnDelta;	
 		// }
 
-		var keyTurnAngle = 10;
+		var keyTurnAngle = 5;
 		if(keyboard.left()){
 			turnDelta = GLOBAL_cameraAngle + (_dt * keyTurnAngle);
 			GLOBAL_cameraAngle = turnDelta;
@@ -339,12 +340,20 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 			GLOBAL_cameraAngle = turnDelta;
 		}
 
-		GLOBAL_cameraAngle = Math.min(GLOBAL_cameraAngle, GLOBAL_cameraMaxTurnSpeed);
 		cameraLookat = cameraLookat.rotateY3((GLOBAL_cameraAngle).toRadians());
 
 		//NOTE(brett): Move the player car	
 		var currentCarVelocity = GLOBAL_carVelocity.scale3(GLOBAL_carAcceleration * _dt);
+		
+
+		currentCarVelocity = currentCarVelocity.norm3()
+			.rotateY3(GLOBAL_carAngle.toRadians())
+			.scale3(currentCarVelocity.len3());
+
+
 		GLOBAL_carCenterPosition = GLOBAL_carCenterPosition.add3(currentCarVelocity);
+
+		GLOBAL_carAngle += GLOBAL_cameraAngle;
 
 		ViewCamera.eye = ViewCamera.center.add3(cameraLookat);
 		ViewMatrix = ViewCamera.getViewMatrix();
@@ -437,9 +446,10 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		gl.bindBuffer(gl.ARRAY_BUFFER,
 		              BoxGeometryBuffer);
 
-		var modelMatrix = glm.mat4.create()
-		glm.mat4.rotateY(modelMatrix, modelMatrix, GLOBAL_cameraAngle.toRadians());
+		var modelMatrix = glm.mat4.create();
+
 		glm.mat4.translate(modelMatrix, modelMatrix, GLOBAL_carCenterPosition);
+		glm.mat4.rotateY(modelMatrix, modelMatrix, GLOBAL_carAngle.toRadians());
 
 		gl.uniformMatrix4fv(modelUniformLocation,
 		                    false,
