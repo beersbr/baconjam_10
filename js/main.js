@@ -258,8 +258,8 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 
 		//NOTE(keith): for now this is just a copy of the box; getting it passing by, then will change it to a tree
-		var treeBufferSize = GLOBAL_quadTypeSize * 36;
-		var treeBufferData = CreateTree([-GLOBAL_carHalfScale, +GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+		var treeBufferSize = GLOBAL_quadTypeSize * 36 * 2;
+		var treeBufferDataTrunk = CreateTree([-GLOBAL_carHalfScale, +GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
 		                              [-GLOBAL_carHalfScale, +GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
 		                              [+GLOBAL_carHalfScale, +GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
 		                              [+GLOBAL_carHalfScale, +GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
@@ -269,7 +269,24 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 		                              [+GLOBAL_carHalfScale, -GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
 		                              [+GLOBAL_carHalfScale, -GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
 		                              //NOTE(brett): color
-		                              [1.0, 1.0, 1.0, 0.0]);
+		                              [0.4, 0.1, 0.1, 0.0]);
+
+		var treeBufferDataLeaves = CreateTree([-GLOBAL_carHalfScale, (GLOBAL_carHalfScale*2)+GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+				                              [-GLOBAL_carHalfScale, (GLOBAL_carHalfScale*2)+GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+				                              [+GLOBAL_carHalfScale, (GLOBAL_carHalfScale*2)+GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+				                              [+GLOBAL_carHalfScale, (GLOBAL_carHalfScale*2)+GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+				                              //NOTE(brett): bottom*2
+				                              [-GLOBAL_carHalfScale, (GLOBAL_carHalfScale*2)-GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+				                              [-GLOBAL_carHalfScale, (GLOBAL_carHalfScale*2)-GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+				                              [+GLOBAL_carHalfScale, (GLOBAL_carHalfScale*2)-GLOBAL_carHalfScale, -GLOBAL_carHalfScale],
+				                              [+GLOBAL_carHalfScale, (GLOBAL_carHalfScale*2)-GLOBAL_carHalfScale, +GLOBAL_carHalfScale],
+		                              		 //NOTE(brett): color
+		                              		 [0.2, 1.0, 0.2, 0.0]);
+
+		var treeBufferData = treeBufferDataTrunk;
+		Array.prototype.push.apply(treeBufferData, treeBufferDataLeaves);
+	
+
 
 		TreeGeometryBuffer = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, TreeGeometryBuffer);
@@ -566,7 +583,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 			              TreeGeometryBuffer);
 			var modelMatrix = glm.mat4.create();
 			glm.mat4.translate(modelMatrix, modelMatrix, GLOBAL_treeArray[tree]);
-			glm.mat4.rotateY(modelMatrix, modelMatrix, GLOBAL_carAngle.toRadians());
+			// glm.mat4.rotateY(modelMatrix, modelMatrix, GLOBAL_carAngle.toRadians());
 
 			gl.uniformMatrix4fv(modelUniformLocation,
 			                    false,
@@ -610,7 +627,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 			                       GLOBAL_vertexTypeSize,
 			                       24);
 			
-			gl.drawArrays(gl.TRIANGLES, 0, 36);
+			gl.drawArrays(gl.TRIANGLES, 0, 36*2);
 		}
 	}
 
