@@ -1,5 +1,4 @@
-define(['Display'], function(Display){
-	var display = new Display()
+define([], function(){
 	var keyboard = null;
 
 	var Keyboard = function(){
@@ -49,13 +48,14 @@ define(['Display'], function(Display){
 
 
 	function keyup(_event){
-		keyboard.keys[_event.keyCode] = false;
+		if(keyboard) keyboard.keys[_event.keyCode] = false;
 	}
 
 	function keydown(_event){
-		keyboard.keys[_event.keyCode] = true;
+		if(keyboard) keyboard.keys[_event.keyCode] = true;
 	}
 
 
 	return Keyboard;
+
 });

@@ -3,7 +3,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'Ar
 
 	var display = new Display("Bacon Jam 10", 1200, 800);
 	var mouse = new Mouse(display);
-	var keyboard = new Keyboard();
+	// var keyboard = new Keyboard();
 
 	var ProjectionMatrix = null;
 	var ViewMatrix = null;
