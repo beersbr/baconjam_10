@@ -20,9 +20,9 @@ varying vec4 vertex_color;
 void main(){
 
 	vec4 positionP = projection * view * model * vec4(position, 1.0);
-	vec4 normalP = inverseView * vec4(normalize(normal), 1.0);
+	vec4 normalP = inverseView * vec4(normal, 1.0);
 
-	vertex_light = max(dot(normalP.xyz, lightDir.xyz), 0.0);
+	vertex_light = max(dot(normal.xyz, -lightDir.xyz), 0.0);
 	vertex_color = color;
 
 	gl_Position = positionP;

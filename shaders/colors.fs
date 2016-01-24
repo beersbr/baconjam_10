@@ -6,7 +6,7 @@ varying vec4 vertex_color;
 
 void main(){
 
-	vec4 lit_color = vec4(vertex_color.rgb * vertex_light, 1.0);
+	vec4 diffuse = vec4(vertex_color.rgb * vertex_light, 1.0);
 
-	gl_FragColor = lit_color;
+	gl_FragColor = diffuse;
 }

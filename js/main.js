@@ -23,17 +23,17 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		var p1 = _bottomleft.slice();
 		var p2 = _topright.slice();
 
-		var n0 = p2.sub3(p0).cross3(p1.sub3(p0)).norm3();
+		var n0 = (p2.sub3(p0)).cross3((p1.sub3(p0))).norm3();
 
 		var p3 = _topright.slice();
 		var p4 = _bottomleft.slice();
 		var p5 = _bottomright.slice();
 
-		var n1 = p5.sub3(p3).cross3(p4.sub3(p3)).norm3();
+		var n1 = (p5.sub3(p3)).cross3((p4.sub3(p3))).norm3();
 
 		var color = _color.slice();
 
-		// p0
+		// p0z
 		Array.prototype.push.apply(quad, p0);
 		Array.prototype.push.apply(quad, n0);
 		Array.prototype.push.apply(quad, color);
@@ -73,9 +73,17 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 
 		var topQuad = CreateQuad(_t_topleft, _t_bottomleft, _t_bottomright, _t_topright, _color);
 		var bottomQuad = CreateQuad(_b_topleft, _b_bottomleft, _b_bottomright, _b_topright, _color);
+		var frontQuad = CreateQuad(_t_topright, _b_topright, _b_topleft, _t_topleft, _color);
+		var backQuad = CreateQuad(_t_bottomleft, _b_bottomleft, _b_bottomright, _t_bottomright, _color);
+		var leftQuad = CreateQuad(_t_topleft, _b_topleft, _b_bottomleft, _t_bottomleft, _color);
+		var rightQuad = CreateQuad(_t_bottomright, _b_bottomright, _b_topright, _t_topright, _color);
 
 		Array.prototype.push.apply(box, topQuad);
 		Array.prototype.push.apply(box, bottomQuad);
+		Array.prototype.push.apply(box, frontQuad);
+		Array.prototype.push.apply(box, backQuad);
+		Array.prototype.push.apply(box, leftQuad);
+		Array.prototype.push.apply(box, rightQuad);
 
 		return box;
 	}
@@ -159,12 +167,12 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		GLOBAL_vertexTypeSize = 40;
 		GLOBAL_quadTypeSize = 240; 
 		//NOTE(brett): probably only need about 100, but i'll keep it at a circular 200
-		GLOBAL_maxTrackQuadCount = 40;
+		GLOBAL_maxTrackQuadCount = 100;
 		GLOBAL_trackQuadCount = 0;
 
 		GLOBAL_cameraAngle = 0.0;
 		GLOBAL_cameraTurnSpeed = 2;
-		GLOBAL_cameraMaxTurnSpeed = 25;
+		GLOBAL_cameraMaxTurnSpeed = 15;
 
 		//NOTE(brett): change direction every trackChangeTimer seconds
 		GLOBAL_trackChangeTimer = 2;
@@ -179,8 +187,8 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 
 		GLOBAL_trackWidth = 1.6;
 
-		GLOBAL_bottomLeft = [-GLOBAL_trackWidth/2.0, 0, 0];
-		GLOBAL_bottomRight = [GLOBAL_trackWidth/2.0, 0, 0];
+		GLOBAL_bottomLeft = [GLOBAL_trackWidth/2.0, 0, 0];
+		GLOBAL_bottomRight = [-GLOBAL_trackWidth/2.0, 0, 0];
 
 		GLOBAL_carVelocity = [0, 0, 1];
 		GLOBAL_carCenterPosition = [0, 0.1, 0];
@@ -275,6 +283,8 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 			GLOBAL_trackChangeTimerCounter = 0.0;
 		}
 
+		GLOBAL_trackWidth = 0.5;
+
 		var currentTrackVelocity = GLOBAL_trackVelocity.scale3(GLOBAL_trackAcceleration * _dt);
 
 		// var frameAngle = GLOBAL_trackAngle * _dt;
@@ -303,7 +313,6 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		                      topRight,
 		                      [0.5, 0.0, 1.0, 1.0]);
 
-
 		GLOBAL_bottomLeft = topLeft;
 		GLOBAL_bottomRight = topRight;
 
@@ -320,14 +329,19 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		var rx = mousePosition.x / width;
 		var ry = mousePosition.y / height;
 
+
+
 		//NOTE(brett): map the mouse position to -1<->1
 		var mouseOffset = [-1 + rx*2, -1 + ry*2];
 
-		ViewCamera.center.z = GLOBAL_trackCenter.z;
-		ViewCamera.center.x = GLOBAL_trackCenter.x;
+		// ViewCamera.center.z = GLOBAL_trackCenter.z;
+		// ViewCamera.center.x = GLOBAL_trackCenter.x;
 
-		var turnDelta = GLOBAL_cameraAngle + (_dt * (mouseOffset.x * GLOBAL_cameraTurnSpeed));
-		GLOBAL_cameraAngle = turnDelta;
+		//NOTE(brett): 30% in the center of the screen is used for NOT turning
+		if(Math.abs(mouseOffset.x) > 0.15){
+			var turnDelta = GLOBAL_cameraAngle + (_dt * (mouseOffset.x * GLOBAL_cameraTurnSpeed));
+			GLOBAL_cameraAngle = turnDelta;	
+		}
 
 		GLOBAL_cameraAngle = Math.min(GLOBAL_cameraAngle, GLOBAL_cameraMaxTurnSpeed);
 
@@ -357,9 +371,9 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		                    false,
 		                    glm.mat4.create());
 
+		var lightDirection = ViewCamera.center.sub3(ViewCamera.eye).norm3();
 		gl.uniform3fv(lightDirUniformLocation,
-		              ViewCamera.eye.sub3(ViewCamera.center).norm3());
-
+		              lightDirection);
 
 		var inverseView = glm.mat4.create();
 		glm.mat4.invert(inverseView, ViewMatrix);
@@ -464,7 +478,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		                       GLOBAL_vertexTypeSize,
 		                       24);
 		
-		gl.drawArrays(gl.TRIANGLES, 0, 12);
+		gl.drawArrays(gl.TRIANGLES, 0, 36);
 	}
 
 	load_data(display.getGraphics());
