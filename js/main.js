@@ -1,9 +1,9 @@
-require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'NumberExt', 'Camera', 'Color', 'perlin'], 
-        function(FileLoader, ImageLoader, Mouse, Display, glm, ArrayExt, NumberExt, Camera, color, perlin){
-
+require(['FileLoader', 'ImageLoader', 'Mouse', 'Keyboard', 'Display', 'glm', 'ArrayExt', 'NumberExt', 'Camera', 'Color', 'perlin'], 
+        function(FileLoader, ImageLoader, Mouse, Keyboard, Display, glm, ArrayExt, NumberExt, Camera, color, perlin){
 
 	var display = new Display("Bacon Jam 10", 1200, 800);
 	var mouse = new Mouse(display);
+	var keyboard = new Keyboard();
 
 	var ProjectionMatrix = null;
 	var ViewMatrix = null;
@@ -179,20 +179,21 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		GLOBAL_trackChangeTimerCounter = 0;
 
 		GLOBAL_trackVelocity = [0, 0, 1];
-		GLOBAL_trackAcceleration = 0.1;
+		GLOBAL_trackAcceleration = 0.5;
 
 		GLOBAL_trackAngle = 0;
 		GLOBAL_trackTurnAngle = 0;
 		GLOBAL_trackCenter = [0.0, 0.0, 0.0];
 
-		GLOBAL_trackWidth = 1.6;
+		GLOBAL_trackWidth = 1.5;
 
-		GLOBAL_bottomLeft = [GLOBAL_trackWidth/2.0, 0, 0];
-		GLOBAL_bottomRight = [-GLOBAL_trackWidth/2.0, 0, 0];
+		GLOBAL_bottomLeft = [-GLOBAL_trackWidth/2.0, 0, 0];
+		GLOBAL_bottomRight = [GLOBAL_trackWidth/2.0, 0, 0];
 
-		GLOBAL_carVelocity = [0, 0, 1];
-		GLOBAL_carCenterPosition = [0, 0.1, 0];
-		GLOBAL_carScale = 0.05;
+		GLOBAL_carVelocity = [0, 0, 1.0];
+		GLOBAL_carAcceleration = 0.5;
+		GLOBAL_carCenterPosition = [0, 0.1, -0.1];
+		GLOBAL_carScale = 0.2/2;
 
 		GLOBAL_currentTrackDistance = 0;
 
@@ -223,17 +224,6 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		gl.bufferData(gl.ARRAY_BUFFER,
 		              new Float32Array(carBufferData),
 		              gl.DYNAMIC_DRAW);
-
-		// var lineGeometryData = [GLOBAL_carPosition.x, GLOBAL_carPosition.y+1, GLOBAL_carPosition.z,
-		// 						GLOBAL_carPosition.x, GLOBAL_carPosition.y-1, GLOBAL_carPosition.z];
-
-		// LineGeometryBuffer = gl.createBuffer();
-		// gl.bindBuffer(gl.ARRAY_BUFFER, LineGeometryBuffer);
-		// gl.bufferData(gl.ARRAY_BUFFER,
-		//               lineBuffer,
-		//               gl.DYNAMIC_DRAW);
-
-
 
 		run();
 	}
@@ -283,8 +273,6 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 			GLOBAL_trackChangeTimerCounter = 0.0;
 		}
 
-		GLOBAL_trackWidth = 0.5;
-
 		var currentTrackVelocity = GLOBAL_trackVelocity.scale3(GLOBAL_trackAcceleration * _dt);
 
 		// var frameAngle = GLOBAL_trackAngle * _dt;
@@ -320,8 +308,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		var cameraLookat = ViewCamera.eye.sub3(ViewCamera.center);
 
 		//TODO(brett): move the camera with respect to the mouse position on the screen
-		//TODO(brett): Need to start the mouse off in the center of the canvas
-		
+		//TODO(brett): Need to start the mouse off in the center of the canvas		
 		var width = display.getWidth();
 		var height = display.getHeight();
 
@@ -329,23 +316,27 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		var rx = mousePosition.x / width;
 		var ry = mousePosition.y / height;
 
-
-
 		//NOTE(brett): map the mouse position to -1<->1
 		var mouseOffset = [-1 + rx*2, -1 + ry*2];
 
-		// ViewCamera.center.z = GLOBAL_trackCenter.z;
-		// ViewCamera.center.x = GLOBAL_trackCenter.x;
+		ViewCamera.center.z = GLOBAL_carCenterPosition.z;
+		ViewCamera.center.x = GLOBAL_carCenterPosition.x;
 
-		//NOTE(brett): 30% in the center of the screen is used for NOT turning
-		if(Math.abs(mouseOffset.x) > 0.15){
-			var turnDelta = GLOBAL_cameraAngle + (_dt * (mouseOffset.x * GLOBAL_cameraTurnSpeed));
-			GLOBAL_cameraAngle = turnDelta;	
-		}
+		// NOTE(brett): 30% in the center of the screen is used for NOT turning
+		// if(Math.abs(mouseOffset.x) > 0.15){
+		// 	var turnDelta = GLOBAL_cameraAngle + (_dt * (-mouseOffset.x * GLOBAL_cameraTurnSpeed));
+		// 	GLOBAL_cameraAngle = turnDelta;	
+		// }
 
 		GLOBAL_cameraAngle = Math.min(GLOBAL_cameraAngle, GLOBAL_cameraMaxTurnSpeed);
-
 		cameraLookat = cameraLookat.rotateY3((GLOBAL_cameraAngle).toRadians());
+
+		//NOTE(brett): move the player (the car)
+		// var currentTrackVelocity = GLOBAL_trackVelocity.scale3(GLOBAL_trackAcceleration * _dt);
+
+		
+		var currentCarVelocity = GLOBAL_carVelocity.scale3(GLOBAL_carAcceleration * _dt);
+		GLOBAL_carCenterPosition = GLOBAL_carCenterPosition.add3(currentCarVelocity);
 
 		ViewCamera.eye = ViewCamera.center.add3(cameraLookat);
 		ViewMatrix = ViewCamera.getViewMatrix();
@@ -383,9 +374,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		                    false,
 		                    inverseView);
 
-
 		//NOTE(brett): render the track
-
 		gl.bindBuffer(gl.ARRAY_BUFFER,
 		              TrackGeometryBuffer);
 
@@ -429,6 +418,7 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		                       GLOBAL_vertexTypeSize,
 		                       24);
 
+
 		//NOTE(brett): increase the track size counter
 		GLOBAL_trackQuadCount += 1;
 		var indexDrawCount = Math.min(GLOBAL_trackQuadCount, GLOBAL_maxTrackQuadCount);
@@ -438,6 +428,13 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		//NOTE(brett): render the car box
 		gl.bindBuffer(gl.ARRAY_BUFFER,
 		              BoxGeometryBuffer);
+
+		var modelMatrix = glm.mat4.create()
+		glm.mat4.translate(modelMatrix, modelMatrix, GLOBAL_carCenterPosition);
+
+		gl.uniformMatrix4fv(modelUniformLocation,
+		                    false,
+		                    modelMatrix);
 
 		// gl.bufferSubData(gl.ARRAY_BUFFER,
 		//                  trackBufferIndex,
@@ -451,7 +448,6 @@ require(['FileLoader', 'ImageLoader', 'Mouse', 'Display', 'glm', 'ArrayExt', 'Nu
 		var positionLocation = gl.getAttribLocation(ColorsShader, "position");
 		var normalLocation = gl.getAttribLocation(ColorsShader, "normal");
 		var colorLocation = gl.getAttribLocation(ColorsShader, "color");
-
 
 		//NOTE(brett): Prepare the position 
 		//NOTE(brett): gl.vertexAttribPoint(position, element count, type, normalized?, stride, offset)

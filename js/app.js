@@ -13,6 +13,7 @@ requirejs.config({
 
 		"Camera": "util/camera",
 		"Mouse": "util/mouse",
+		"Keyboard": "util/keyboard",
 		"Color": "util/color",
 		"Rect": "util/rect",
 		"Controller": "util/controller",

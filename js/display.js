@@ -4,13 +4,20 @@ define(['Class'], function(Class){
 
 	var audioElement, audioContext, analyzer;
 
+	var display = null;
+
 	var Display = Class.extend({
 		ctor: function(_title, _width, _height){
-			title = _title,
-			width = _width,
-			height = _height;
+			if(!display){
+				title = _title,
+				width = _width,
+				height = _height;
 
-			createDisplay();
+				createDisplay();
+				display = this;
+			}
+
+			return display;
 		}
 	});
 
@@ -44,6 +51,10 @@ define(['Class'], function(Class){
 
 	Display.prototype.getAspectRatio = function(){
 		return (this.getWidth()/this.getHeight());
+	}
+
+	Display.getInstance = function(){
+		return display;
 	}
 
 	/***************************************************************
